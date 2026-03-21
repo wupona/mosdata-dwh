@@ -2,6 +2,7 @@ import os
 import smtplib
 import logging
 import glob
+import sys
 from email.message import EmailMessage
 from datetime import datetime
 from dotenv import load_dotenv
@@ -91,13 +92,27 @@ def send_combined_reports():
         logger.warning("⚠️ Aucun fichier n'a pu être collecté. Envoi annulé.")
         return
 
+    smtp_starttls_env = os.getenv("SMTP_STARTTLS", "")
+    use_starttls = smtp_starttls_env.lower() in {"1", "true", "yes", "on"} if smtp_starttls_env else smtp_port == 587
+
     try:
-        with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=30) as smtp:
-            smtp.login(smtp_user, smtp_password)
-            smtp.send_message(msg)
+        if smtp_port == 465:
+            with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=30) as smtp:
+                smtp.login(smtp_user, smtp_password)
+                smtp.send_message(msg)
+        else:
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=30) as smtp:
+                smtp.ehlo()
+                if use_starttls:
+                    smtp.starttls()
+                    smtp.ehlo()
+                smtp.login(smtp_user, smtp_password)
+                smtp.send_message(msg)
         logger.info(f"🚀 Succès ! {len(attachments_to_add)} rapports envoyés.")
+        return True
     except Exception as e:
         logger.error(f"💥 Erreur d'envoi : {e}")
+        return False
 
 if __name__ == "__main__":
-    send_combined_reports()
+    sys.exit(0 if send_combined_reports() else 1)

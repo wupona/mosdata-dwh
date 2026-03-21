@@ -15,20 +15,37 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(
 logger = logging.getLogger("MailService")
 
 def send_combined_reports():
-        # Paramètres serveur Blissydah
-    SMTP_SERVER = "mail.blissydah.com"
-    SMTP_PORT = 465
-    EMAIL_USER = "norbert.wupona@blissydah.com"
-    EMAIL_PASS = os.getenv("EMAIL_PASSWORD")
-    EMAIL_RECEIVER = os.getenv("EMAIL_RECEIVER", "norbert.wupona@blissydah.com")
+    smtp_host = os.getenv("SMTP_HOST") or os.getenv("SMTP_SERVER")
+    smtp_port_raw = os.getenv("SMTP_PORT", "465")
+    smtp_user = os.getenv("SMTP_USER") or os.getenv("EMAIL_USER")
+    smtp_password = os.getenv("SMTP_PASSWORD") or os.getenv("EMAIL_PASSWORD")
+    receivers = os.getenv("EMAIL_RECEIVER") or os.getenv("SMTP_TO") or smtp_user
+    mail_from = os.getenv("MAIL_FROM") or smtp_user
+
+    missing = []
+    if not smtp_host:
+        missing.append("SMTP_HOST/SMTP_SERVER")
+    if not smtp_user:
+        missing.append("SMTP_USER/EMAIL_USER")
+    if not smtp_password:
+        missing.append("SMTP_PASSWORD/EMAIL_PASSWORD")
+    if missing:
+        logger.error(f"💥 Config SMTP manquante: {', '.join(missing)}")
+        return
+
+    try:
+        smtp_port = int(smtp_port_raw)
+    except ValueError:
+        logger.error(f"💥 SMTP_PORT invalide: {smtp_port_raw}")
+        return
 
     OUTPUT_DIR = os.path.join(PROJECT_ROOT, "reports", "outputs")
 
     msg = EmailMessage()
     today_str = datetime.now().strftime('%d/%m/%Y')
     msg['Subject'] = f"📊 Rapports Quotidiens Blissydah - {today_str}"
-    msg['From'] = EMAIL_USER
-    msg['To'] = EMAIL_RECEIVER
+    msg['From'] = mail_from
+    msg['To'] = receivers
 
     # 1. ON INITIALISE LE TEXTE (BODY) D'ABORD
     body_text = f"Bonjour,\n\nVeuillez trouver ci-joint les derniers rapports d'activité Blissydah :\n\n"
@@ -75,8 +92,8 @@ def send_combined_reports():
         return
 
     try:
-        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as smtp:
-            smtp.login(EMAIL_USER, EMAIL_PASS)
+        with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=30) as smtp:
+            smtp.login(smtp_user, smtp_password)
             smtp.send_message(msg)
         logger.info(f"🚀 Succès ! {len(attachments_to_add)} rapports envoyés.")
     except Exception as e:

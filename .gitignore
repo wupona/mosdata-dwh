@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+
+# Virtual envs
+venv/
+.venv/
+
+# Secrets and local env
+.env
+config/db.env
+*.pem
+*.key
+
+# Runtime/generated data
+logs/
+daily_reports/
+output/
+outputs/
+data/
+reports/outputs/
+reports/inputs/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Database exports and backups
+*.dump
+*.sql.gz
+blissydah_schema.sql
+core_full_wsl.sql
+core_structure_refs.sql
+ref_data_export.sql
+refs_wsl.sql
+
+# Legacy / archives not part of clean source
+/archives/

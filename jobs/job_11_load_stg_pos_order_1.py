@@ -5,21 +5,16 @@ import psycopg2
 import time
 from datetime import datetime, timedelta
 from psycopg2.extras import execute_values
-from dotenv import load_dotenv
 
 # --- CONFIGURATION DES CHEMINS ---
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-load_dotenv(os.path.join(PROJECT_ROOT, ".env"), override=False)
-
-DB_ENV_PATH = os.path.join(PROJECT_ROOT, "config", "db.env")
-load_dotenv(DB_ENV_PATH, override=True)
-
 SCRIPTS_DIR = os.path.join(PROJECT_ROOT, "scripts")
 if SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, SCRIPTS_DIR)
 
 try:
     from odoo_client_odoorpc_fixed import OdooClient
+    from security_env import load_project_env, get_odoo_secret, get_db_password
 except ImportError:
     print(f"❌ Erreur: odoo_client_odoorpc_fixed.py introuvable dans {SCRIPTS_DIR}")
     sys.exit(1)
@@ -32,6 +27,8 @@ logging.basicConfig(
 )
 LOG = logging.getLogger("JOB_11_POS_ORDER")
 
+load_project_env(PROJECT_ROOT)
+
 def run():
     LOG.info("--- DÉMARRAGE DU JOB 11 : STAGING POS + RÉFÉRENCES MÉTIER ---")
     start_time = time.time()
@@ -40,9 +37,9 @@ def run():
     odoo_host = os.getenv("ODOO_HOST", "blissydah.odoo.com")
     odoo_db = os.getenv("ODOO_DB", "blissydah")
     odoo_user = os.getenv("ODOO_USER")
-    odoo_password = os.getenv("ODOO_API_KEY") or os.getenv("ODOO_PASSWORD")
+    odoo_password = get_odoo_secret(required=True)
     if not odoo_user or not odoo_password:
-        LOG.error("❌ Missing ODOO_USER and/or ODOO_API_KEY (or ODOO_PASSWORD)")
+        LOG.error("❌ Missing ODOO_USER and/or ODOO_SECRET (alias: ODOO_API_KEY)")
         return
 
     client = OdooClient(
@@ -118,7 +115,7 @@ def run():
             port=os.getenv("DB_PORT", 5432),
             dbname=os.getenv("DB_NAME"),
             user=os.getenv("DB_USER"),
-            password=os.getenv("DB_PASSWORD")
+            password=get_db_password(required=True)
         )
         with conn.cursor() as cur:
             sql = """

@@ -18,7 +18,7 @@ Files written to:
   {SM_EXTRACT_OUT_DIR}/stock_move_line_<timestamp>.manifest.json
 
 Env (.env at project root):
-  ODOO_URL, ODOO_DB, ODOO_USER, ODOO_API_KEY (or ODOO_PASSWORD)
+  ODOO_URL, ODOO_DB, ODOO_USER, ODOO_SECRET (alias: ODOO_API_KEY)
 Optional:
   SM_EXTRACT_DAYS=3
   SM_EXTRACT_OUT_DIR=/mnt/c/Blissydah/data/stock_movement/inbox
@@ -35,7 +35,6 @@ import gzip
 import logging
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
-from dotenv import load_dotenv
 from typing import Any, Dict, List, Optional
 
 
@@ -49,6 +48,7 @@ if SCRIPTS_DIR not in sys.path:
 
 try:
     from odoo_client_odoorpc_fixed import OdooClient
+    from security_env import load_project_env, get_odoo_secret
 except ImportError as e:
     print(f"❌ ImportError: {e}")
     print(f"Expected odoo_client_odoorpc_fixed.py in: {SCRIPTS_DIR}")
@@ -59,6 +59,8 @@ except ImportError as e:
 # Logging
 # -------------------------------------------------------------------
 LOG = logging.getLogger("job_06_extract_sm_move_line_3d")
+
+load_project_env(PROJECT_ROOT)
 
 
 def setup_logging():
@@ -77,15 +79,10 @@ def env(name: str, default: Optional[str] = None) -> str:
 
 
 def build_odoo_client() -> OdooClient:
-    load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
-
     url = env("ODOO_URL")
     parsed = urlparse(url)
 
-    # allow either ODOO_API_KEY or ODOO_PASSWORD
-    password = os.getenv("ODOO_API_KEY") or os.getenv("ODOO_PASSWORD")
-    if not password:
-        raise RuntimeError("Missing ODOO_API_KEY (or ODOO_PASSWORD) in .env")
+    password = get_odoo_secret(required=True)
 
     return OdooClient(
         host=parsed.hostname,

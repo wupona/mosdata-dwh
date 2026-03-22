@@ -29,10 +29,13 @@ source "$VENV_PATH"
 cd "$PROJECT_ROOT"
 
 echo "[INFO] Step 1/3 - Ensure partitions" | tee -a "$LOG_FILE"
-"$PROJECT_ROOT/orchestration/ensure_pos_partitions.sh" -2 7 | tee -a "$LOG_FILE"
+"$PROJECT_ROOT/orchestration/ensure_dwh_partitions.sh" prod | tee -a "$LOG_FILE"
 
 echo "[INFO] Step 2/3 - Preflight checks" | tee -a "$LOG_FILE"
-python "$PROJECT_ROOT/scripts/preflight_prod.py" --days-ahead 5 | tee -a "$LOG_FILE"
+python "$PROJECT_ROOT/scripts/preflight_prod.py" \
+  --days-ahead-pos 10 \
+  --days-ahead-sm 14 \
+  --months-ahead-fct 6 | tee -a "$LOG_FILE"
 
 echo "[INFO] Step 3/3 - Run ETL pipeline" | tee -a "$LOG_FILE"
 python -m jobs.run_all_jobs | tee -a "$LOG_FILE"

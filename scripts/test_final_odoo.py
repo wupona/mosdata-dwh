@@ -11,7 +11,7 @@ print("=" * 60)
 
 # Affiche info (masquée)
 api_key = os.getenv('ODOO_API_KEY', '')
-print(f"Clé API: {api_key[:10]}...{api_key[-10:] if len(api_key) > 20 else ''} ({len(api_key)} caractères)")
+print(f"Clé API: {'configurée' if api_key else 'absente'} ({len(api_key)} caractères)")
 
 try:
     from odoo_client_odoorpc_fixed import OdooClient

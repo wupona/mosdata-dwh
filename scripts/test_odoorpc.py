@@ -19,7 +19,7 @@ print("\n🔧 Configuration chargée:")
 print(f"   ODOO_URL: {os.getenv('ODOO_URL')}")
 print(f"   ODOO_DB: {os.getenv('ODOO_DB')}")
 print(f"   ODOO_USER: {os.getenv('ODOO_USER')}")
-print(f"   ODOO_PASSWORD: {'*' * len(os.getenv('ODOO_PASSWORD', ''))}")
+print(f"   ODOO_SECRET: {'configured' if os.getenv('ODOO_SECRET') or os.getenv('ODOO_API_KEY') else 'absent'}")
 
 try:
     from odoo_client_odoorpc import OdooClientODOO

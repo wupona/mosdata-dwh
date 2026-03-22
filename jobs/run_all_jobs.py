@@ -16,7 +16,15 @@ def run_jobs():
         PROJECT_ROOT = CURRENT_DIR
         JOBS_DIR = os.path.join(PROJECT_ROOT, "jobs")
     
-    # Injection du PROJECT_ROOT dans l'environnement Python pour les imports
+    # Load env files and normalize secret aliases once for all child jobs.
+    scripts_dir = os.path.join(PROJECT_ROOT, "scripts")
+    if scripts_dir not in sys.path:
+        sys.path.insert(0, scripts_dir)
+    from security_env import load_project_env, normalize_secret_aliases
+
+    load_project_env(PROJECT_ROOT)
+    normalize_secret_aliases()
+
     env_vars = os.environ.copy()
     env_vars["PYTHONPATH"] = PROJECT_ROOT + os.pathsep + env_vars.get("PYTHONPATH", "")
 
@@ -53,7 +61,7 @@ def run_jobs():
         try:
             # On passe env=env_vars pour que le job puisse faire "from scripts.xxx import..."
             result = subprocess.run(
-                ["python3", job_path], 
+                [sys.executable, job_path], 
                 check=True, 
                 cwd=PROJECT_ROOT, # On se place à la racine pour l'exécution
                 env=env_vars

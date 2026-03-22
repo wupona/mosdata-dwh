@@ -1,9 +1,9 @@
 import os
 import odoorpc
-from dotenv import load_dotenv
+from security_env import load_project_env, get_odoo_secret
 
 def get_odoo():
-    load_dotenv()
+    load_project_env()
 
     host = os.getenv("ODOO_HOST") or os.getenv("ODOO_URL") or "blissydah.odoo.com"
     host = host.replace("https://", "").replace("http://", "").rstrip("/")
@@ -11,10 +11,10 @@ def get_odoo():
 
     db = os.getenv("ODOO_DB", "blissydah")
     user = os.getenv("ODOO_USER")
-    api_key = os.getenv("ODOO_API_KEY") or os.getenv("ODOO_PASSWORD")
+    api_key = get_odoo_secret(required=True)
 
-    if not user or not api_key:
-        raise RuntimeError("ODOO_USER et ODOO_API_KEY (ou ODOO_PASSWORD) doivent être définis dans .env")
+    if not user:
+        raise RuntimeError("ODOO_USER doit être défini dans .env")
 
     protocol = "jsonrpc+ssl" if port == 443 else "jsonrpc"
     odoo = odoorpc.ODOO(host=host, port=port, protocol=protocol)

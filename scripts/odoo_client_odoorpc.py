@@ -1,11 +1,9 @@
 # scripts/odoo_client_odoorpc_fixed.py
 import os
 import odoorpc
-from dotenv import load_dotenv
+from security_env import load_project_env, get_odoo_secret
 
-# Charge le .env
-env_path = os.path.join(os.path.dirname(__file__), '..', '.env')
-load_dotenv(env_path)
+load_project_env()
 
 class OdooClient:
     def __init__(self):
@@ -14,17 +12,13 @@ class OdooClient:
         self.db = os.getenv("ODOO_DB", "")
         self.username = os.getenv("ODOO_USER", "")
         
-        # Essaye ODOO_API_KEY d'abord, puis ODOO_PASSWORD
-        self.api_key = os.getenv("ODOO_API_KEY") or os.getenv("ODOO_PASSWORD", "")
+        self.api_key = get_odoo_secret(required=True)
         
         print(f"🔧 Configuration Odoo Online:")
         print(f"   URL: {self.url}")
         print(f"   DB: {self.db}")
         print(f"   User: {self.username}")
-        print(f"   API Key: {'*' * len(self.api_key) if self.api_key else 'NON DÉFINIE'}")
-        
-        if not self.api_key:
-            raise ValueError("API Key non définie. Utilisez ODOO_API_KEY ou ODOO_PASSWORD dans .env")
+        print("   API Key: configured")
         
         self.odoo = None
         
@@ -70,7 +64,7 @@ class OdooClient:
             
             if "scope and key required" in error_msg:
                 print(f"\n🔧 Solution probable:")
-                print(f"   1. Votre clé API ({self.api_key[:10]}...) est peut-être expirée")
+                print("   1. Votre clé API est peut-être expirée")
                 print(f"   2. Génerez une NOUVELLE clé API dans Odoo Online:")
                 print(f"      - Connectez-vous à https://blissydah.odoo.com")
                 print(f"      - Avatar → Préférences → Compte API")

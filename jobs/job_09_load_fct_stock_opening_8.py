@@ -7,19 +7,16 @@ import time
 from datetime import datetime
 from psycopg2.extras import execute_values
 from functools import wraps
-from dotenv import load_dotenv
 
 # --- CONFIGURATION DES CHEMINS ---
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCRIPTS_DIR = os.path.join(PROJECT_ROOT, "scripts")
-load_dotenv(os.path.join(PROJECT_ROOT, ".env"), override=False)
-load_dotenv(os.path.join(PROJECT_ROOT, "config", "db.env"), override=True)
-
 if SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, SCRIPTS_DIR)
 
 try:
     from odoo_client_odoorpc_fixed import OdooClient
+    from security_env import load_project_env, get_odoo_secret, get_db_password
 except ImportError:
     print(f"❌ Erreur: odoo_client_odoorpc_fixed.py introuvable dans {SCRIPTS_DIR}")
     sys.exit(1)
@@ -32,17 +29,19 @@ logging.basicConfig(
 )
 LOG = logging.getLogger("JOB_STOCK_CHEVEUX_AGING")
 
+load_project_env(PROJECT_ROOT)
+
 # --- PARAMÈTRES DE CONNEXION ---
 ODOO_HOST = os.getenv("ODOO_HOST", "blissydah.odoo.com")
 ODOO_DB = os.getenv("ODOO_DB", "blissydah")
 ODOO_USER = os.getenv("ODOO_USER", "")
-ODOO_PW = os.getenv("ODOO_API_KEY") or os.getenv("ODOO_PASSWORD", "")
+ODOO_PW = get_odoo_secret(required=False)
 
 PG_HOST = os.getenv("DB_HOST", "localhost")
 PG_PORT = int(os.getenv("DB_PORT", "5432"))
 PG_NAME = os.getenv("DB_NAME", "blissydah")
 PG_USER = os.getenv("DB_USER", "blissydah")
-PG_PASS = os.getenv("DB_PASSWORD", "")
+PG_PASS = get_db_password(required=False)
 
 # --- LOGIQUE DE FILTRAGE MÉTIER ---
 KEYWORDS = ["perruque", "plante", "lace", "closure"]

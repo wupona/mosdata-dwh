@@ -59,6 +59,13 @@ def connect_db():
     )
 
 
+def add_months(d: date, months: int) -> date:
+    month0 = (d.year * 12 + (d.month - 1)) + months
+    year = month0 // 12
+    month = (month0 % 12) + 1
+    return date(year, month, 1)
+
+
 def check_db_auth(conn) -> bool:
     with conn.cursor() as cur:
         cur.execute("select current_user, current_database()")
@@ -91,7 +98,7 @@ def check_privileges(conn) -> bool:
     return all_ok
 
 
-def check_partitions(conn, days_ahead: int) -> bool:
+def check_pos_partitions(conn, days_ahead: int) -> bool:
     all_ok = True
     parent = "core.stg_po_pos_order_line"
     with conn.cursor() as cur:
@@ -116,10 +123,78 @@ def check_partitions(conn, days_ahead: int) -> bool:
     return all_ok
 
 
+def check_stg_sm_partitions(conn, start_offset_days: int, days_ahead: int) -> bool:
+    all_ok = True
+    parent = "core.stg_sm_stock_move_line"
+    with conn.cursor() as cur:
+        cur.execute("select to_regclass(%s) is not null", (parent,))
+        exists = bool(cur.fetchone()[0])
+        if not exists:
+            fail(f"Parent table missing: {parent}")
+            return False
+
+    for i in range(start_offset_days, days_ahead + 1):
+        day = date.today() + timedelta(days=i)
+        suffix = day.strftime("%Y%m%d")
+        child = f"core.stg_sm_stock_move_line_{suffix}"
+        with conn.cursor() as cur:
+            cur.execute("select to_regclass(%s) is not null", (child,))
+            exists = bool(cur.fetchone()[0])
+        if exists:
+            ok(f"Partition exists for {day.isoformat()} ({child})")
+        else:
+            fail(f"Missing partition for {day.isoformat()} ({child})")
+            all_ok = False
+    return all_ok
+
+
+def check_fct_sm_partitions(conn, months_ahead: int) -> bool:
+    all_ok = True
+    parent = "core.fct_sm_stock_movement"
+    with conn.cursor() as cur:
+        cur.execute("select to_regclass(%s) is not null", (parent,))
+        exists = bool(cur.fetchone()[0])
+        if not exists:
+            fail(f"Parent table missing: {parent}")
+            return False
+
+    this_month = date.today().replace(day=1)
+    for i in range(0, months_ahead + 1):
+        month_date = add_months(this_month, i)
+        suffix = month_date.strftime("%Y%m")
+        child = f"core.fct_sm_stock_movement_{suffix}"
+        with conn.cursor() as cur:
+            cur.execute("select to_regclass(%s) is not null", (child,))
+            exists = bool(cur.fetchone()[0])
+        if exists:
+            ok(f"Partition exists for {month_date.strftime('%Y-%m')} ({child})")
+        else:
+            fail(f"Missing partition for {month_date.strftime('%Y-%m')} ({child})")
+            all_ok = False
+    return all_ok
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run DWH production preflight checks")
-    parser.add_argument("--days-ahead", type=int, default=5, help="Required partition horizon")
+    parser.add_argument(
+        "--days-ahead",
+        type=int,
+        default=None,
+        help="Legacy option: if set, reused for both POS and SM daily horizons",
+    )
+    parser.add_argument("--days-ahead-pos", type=int, default=5, help="Required POS partition horizon")
+    parser.add_argument("--days-ahead-sm", type=int, default=7, help="Required stock STG partition horizon")
+    parser.add_argument(
+        "--start-offset-sm",
+        type=int,
+        default=1,
+        help="Stock STG partition start offset (days from today); default=1 for future-only checks",
+    )
+    parser.add_argument("--months-ahead-fct", type=int, default=3, help="Required stock FACT monthly horizon")
     args = parser.parse_args()
+
+    days_ahead_pos = args.days_ahead_pos if args.days_ahead is None else args.days_ahead
+    days_ahead_sm = args.days_ahead_sm if args.days_ahead is None else args.days_ahead
 
     missing = check_env()
     if missing:
@@ -135,7 +210,9 @@ def main() -> int:
         checks = [
             check_db_auth(conn),
             check_privileges(conn),
-            check_partitions(conn, args.days_ahead),
+            check_pos_partitions(conn, days_ahead_pos),
+            check_stg_sm_partitions(conn, args.start_offset_sm, days_ahead_sm),
+            check_fct_sm_partitions(conn, args.months_ahead_fct),
         ]
     finally:
         conn.close()

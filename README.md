@@ -190,10 +190,12 @@ DB_PASSWORD
 ODOO_URL
 ODOO_DB
 ODOO_USER
-ODOO_PASSWORD
+ODOO_SECRET (préféré)
+ODOO_API_KEY (alias compatible)
+BLISSYDAH_DB_PASSWORD (préféré)
 
 
-⚠️ Aucun secret ne doit être commité.
+⚠️ Aucun secret ne doit être commité. Les fichiers `.env` et `config/db.env` sont ignorés par git.
 
 9. Logs & traçabilité
 

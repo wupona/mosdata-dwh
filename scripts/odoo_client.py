@@ -1,6 +1,9 @@
 import os
 import odoorpc
-from security_env import load_project_env, get_odoo_secret
+try:
+    from .security_env import load_project_env, get_odoo_secret
+except ImportError:
+    from security_env import load_project_env, get_odoo_secret
 
 def get_odoo():
     load_project_env()
